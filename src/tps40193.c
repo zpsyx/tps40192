@@ -28,7 +28,7 @@ const float fsw = 300000;
 //system property
 //input
 const float vin_max = 14.0;		//V
-const float vin_min = 10.0;		//V
+const float vin_min = 8.0;		//V
 const float vin_ripple = 0.6; 	//V
 //output
 const float iout = 10.0;		//A
@@ -87,10 +87,14 @@ int main(void)
 	float c_bp5;
 
 	float modulator_gain;
-	float f_resonance;
+	float f_res;
 	float f_esr;
+	float f_z1, f_p1;
+	float f_z2, f_p2;
+	float f_co;
 
 	float r7, r8 = 20000;
+	float r6, r10, c1, c2, c3;
 
 	float tmp;
 
@@ -173,10 +177,10 @@ int main(void)
 	//modulator_gain = vin_max/v_ramp;
 	modulator_gain = 14.0;
 	tmp = sqrt(ind_given*c_out_given);
-	f_resonance = 1/(2*M_PI*tmp);
+	f_res = 1/(2*M_PI*tmp);
 
 	f_esr =1/(2*M_PI*c_out_given*c_out_esr);
-	printf("f_resonance = %.1fKHz, f_esr = %.1fKHz.\n", (f_resonance/1000), (f_esr/1000));
+	printf("f_res = %.1fKHz, f_esr = %.1fKHz.\n", (f_res/1000), (f_esr/1000));
 
 	//Feedback Divider (R7, R8)
 	r7 = 0.591*r8/(vout-0.591);
@@ -184,7 +188,32 @@ int main(void)
 
 	//TODO
 	//Error Amplifier Compensation (R6, R10, C1, C2, C3)
+	f_z1 = f_res/2;
+	f_z2 = f_res;
+	f_co = fsw/10;
+	if(f_esr < f_co){
+		f_p1 = f_esr;
+		f_p2 = 4*f_co;
+	}else if(f_esr > 2*f_co){
+		f_p1 = f_co;
+		f_p2 = 8*f_co;
+	}
+	else{
+		printf("Error!\n");
+		return EXIT_SUCCESS;
+	}
+	printf("For this design, fsw = %.1fKHz, f_res = %.1fKHz, f_esr = %.1fKHz, f_co = %.1fKHz,\n\
+			f_p1 = %.1fKHz, f_p2 = %.1fKHz,\n\
+			f_z1 = %.1fKHz, f_z2 = %.1fKHz.\n",
+				(fsw/1000), (f_res/1000), (f_esr/1000), (f_co/1000), (f_p1/1000), (f_p2/1000), (f_z1/1000), (f_z2/1000));
 
+	c2 = 1/(2*M_PI*r8*f_z2);
+	r10 = 1/(2*M_PI*c2*f_p1);
+	r6 = (1.86*r10*r8)/(r10+r8);
+	c3 = 1/(2*M_PI*r6*f_z1);
+	c1 = 1/(2*M_PI*r6*f_p1);
+	printf("R6 = %.2fK¦¸, R10 = %.2fK¦¸ \n", (r6/1000), (r10/1000));
+	printf("C1 = %.0fpF, C2= %.0fpF, C3= %.0fpF.\n", (c1*1000000000000), (c2*1000000000000), (c3*1000000000000));
 
 	return EXIT_SUCCESS;
 }
